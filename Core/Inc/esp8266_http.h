@@ -43,11 +43,5 @@ typedef struct
 
 HAL_StatusTypeDef Esp8266_Setup(void);
 HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats);
-const char *Esp8266_GetLastDiagLine1(void);
-const char *Esp8266_GetLastDiagLine2(void);
-const char *Esp8266_GetLastDiagLine3(void);
-const char *Esp8266_GetLastDiagLine4(void);
-const char *Esp8266_GetLastDiagLine5(void);
-const char *Esp8266_GetLastDiagLine6(void);
 
 #endif /* __ESP8266_HTTP_H__ */

@@ -5,172 +5,18 @@
 
 #if APP_ENABLE_ESP8266
 
-#define ESP8266_RX_TIMEOUT_MS   (5000U)
+#define ESP8266_RX_TIMEOUT_MS    (5000U)
 #define ESP8266_CWJAP_TIMEOUT_MS (25000U)
-#define ESP8266_BUF_SZ          (768U)
-#define ESP8266_AT_TIMEOUT_MS   (1500U)
-
-static char g_esp8266_diag_line1[22] = "IDLE";
-static char g_esp8266_diag_line2[22] = "";
-static char g_esp8266_diag_line3[22] = "";
-static char g_esp8266_diag_line4[22] = "";
-static char g_esp8266_diag_line5[22] = "";
-static char g_esp8266_diag_line6[22] = "";
-static uint16_t g_esp8266_last_rx_bytes = 0U;
-
-const char *Esp8266_GetLastDiagLine1(void)
-{
-  return g_esp8266_diag_line1;
-}
-
-const char *Esp8266_GetLastDiagLine2(void)
-{
-  return g_esp8266_diag_line2;
-}
-
-const char *Esp8266_GetLastDiagLine3(void)
-{
-  return g_esp8266_diag_line3;
-}
-
-const char *Esp8266_GetLastDiagLine4(void)
-{
-  return g_esp8266_diag_line4;
-}
-
-const char *Esp8266_GetLastDiagLine5(void)
-{
-  return g_esp8266_diag_line5;
-}
-
-const char *Esp8266_GetLastDiagLine6(void)
-{
-  return g_esp8266_diag_line6;
-}
-
-static void Esp8266_SetDiag6(const char *line1, const char *line2, const char *line3,
-                             const char *line4, const char *line5, const char *line6)
-{
-  (void)snprintf(g_esp8266_diag_line1, sizeof(g_esp8266_diag_line1), "%s", (line1 != NULL) ? line1 : "");
-  (void)snprintf(g_esp8266_diag_line2, sizeof(g_esp8266_diag_line2), "%s", (line2 != NULL) ? line2 : "");
-  (void)snprintf(g_esp8266_diag_line3, sizeof(g_esp8266_diag_line3), "%s", (line3 != NULL) ? line3 : "");
-  (void)snprintf(g_esp8266_diag_line4, sizeof(g_esp8266_diag_line4), "%s", (line4 != NULL) ? line4 : "");
-  (void)snprintf(g_esp8266_diag_line5, sizeof(g_esp8266_diag_line5), "%s", (line5 != NULL) ? line5 : "");
-  (void)snprintf(g_esp8266_diag_line6, sizeof(g_esp8266_diag_line6), "%s", (line6 != NULL) ? line6 : "");
-}
-
-static void Esp8266_SummarizeRx(const char *rx, char *out, size_t out_sz)
-{
-  size_t oi = 0U;
-  int last_was_space = 0;
-
-  if ((out == NULL) || (out_sz == 0U))
-  {
-    return;
-  }
-
-  if ((rx == NULL) || (rx[0] == '\0'))
-  {
-    (void)snprintf(out, out_sz, "RX:none");
-    return;
-  }
-
-  if (out_sz > 4U)
-  {
-    out[oi++] = 'R';
-    out[oi++] = 'X';
-    out[oi++] = ':';
-  }
-
-  while ((*rx != '\0') && (oi < (out_sz - 1U)))
-  {
-    char ch = *rx++;
-
-    if ((ch == '\r') || (ch == '\n') || (ch == '\t'))
-    {
-      ch = ' ';
-    }
-
-    if (((unsigned char)ch < 32U) || ((unsigned char)ch > 126U))
-    {
-      continue;
-    }
-
-    if (ch == ' ')
-    {
-      if ((oi <= 3U) || (last_was_space != 0))
-      {
-        continue;
-      }
-      last_was_space = 1;
-    }
-    else
-    {
-      last_was_space = 0;
-    }
-
-    out[oi++] = ch;
-  }
-
-  out[oi] = '\0';
-  if (oi <= 3U)
-  {
-    (void)snprintf(out, out_sz, "RX:(bin)");
-  }
-}
+#define ESP8266_BUF_SZ           (768U)
+#define ESP8266_JSON_BUF_SZ      (384U)
+/* First AT after power-on: echo "AT" then "OK"; 500 ms is often too short if ESP is busy. */
+#define ESP8266_AT_FIRST_MS      (2500U)
+#define ESP8266_AT_OTHER_MS      (800U)
 
 #if ESP8266_DEBUG_PRINT
-static void Esp8266_EscapeForLog(const char *src, char *dst, size_t dst_sz)
-{
-  size_t di = 0U;
-
-  if ((dst == NULL) || (dst_sz == 0U))
-  {
-    return;
-  }
-  if (src == NULL)
-  {
-    (void)snprintf(dst, dst_sz, "(null)");
-    return;
-  }
-
-  while ((*src != '\0') && (di < (dst_sz - 1U)))
-  {
-    char ch = *src++;
-
-    if ((ch == '\r') && (di + 2U < dst_sz))
-    {
-      dst[di++] = '\\';
-      dst[di++] = 'r';
-    }
-    else if ((ch == '\n') && (di + 2U < dst_sz))
-    {
-      dst[di++] = '\\';
-      dst[di++] = 'n';
-    }
-    else if ((ch == '\t') && (di + 2U < dst_sz))
-    {
-      dst[di++] = '\\';
-      dst[di++] = 't';
-    }
-    else if (((unsigned char)ch >= 32U) && ((unsigned char)ch <= 126U))
-    {
-      dst[di++] = ch;
-    }
-    else
-    {
-      dst[di++] = '.';
-    }
-  }
-
-  dst[di] = '\0';
-}
-
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
 {
-  char esc[160];
-  Esp8266_EscapeForLog(((rx != NULL) && (rx[0] != '\0')) ? rx : "(timeout/no response)", esc, sizeof(esc));
-  printf("[ESP8266] %s -> %s\r\n", tag, esc);
+  printf("[ESP8266] %s -> %s\r\n", tag, ((rx != NULL) && (rx[0] != '\0')) ? rx : "(timeout/no response)");
 }
 #else
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
@@ -202,16 +48,11 @@ static HAL_StatusTypeDef Esp8266_ReadUntilIdle(char *buf, size_t buf_sz, uint32_
     return HAL_ERROR;
   }
   buf[0] = '\0';
-  g_esp8266_last_rx_bytes = 0U;
 
   while (HAL_GetTick() < t_end)
   {
     if (HAL_UART_Receive(&huart2, &ch, 1U, 40U) == HAL_OK)
     {
-      if (g_esp8266_last_rx_bytes < 65535U)
-      {
-        g_esp8266_last_rx_bytes++;
-      }
       if (i < buf_sz - 1U)
       {
         buf[i] = (char)ch;
@@ -230,7 +71,8 @@ static HAL_StatusTypeDef Esp8266_ReadUntilIdle(char *buf, size_t buf_sz, uint32_
       {
         break;
       }
-      if (strstr(buf, "FAIL") != NULL)
+      /* Do not use strstr(..., "FAIL") — matches "FAILED", "FAILSAFE", etc. */
+      if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
       {
         break;
       }
@@ -249,39 +91,45 @@ static int Esp8266_ResponseHasOk(const char *buf)
   {
     return 0;
   }
-  if (strstr(buf, "FAIL") != NULL)
+  if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
   {
     return 0;
   }
-  return strstr(buf, "OK") != NULL;
+  /* Accept OK after echo: "AT\r\n\r\nOK\r\n" or trailing "OK\r\n". */
+  return (strstr(buf, "\r\nOK\r\n") != NULL) || (strstr(buf, "\r\nOK") != NULL) ||
+         (strstr(buf, "OK\r\n") != NULL);
+}
+
+static int Esp8266_ResponseHasSendSuccess(const char *buf)
+{
+  if ((buf == NULL) || (buf[0] == '\0'))
+  {
+    return 0;
+  }
+  if (strstr(buf, "ERROR") != NULL)
+  {
+    return 0;
+  }
+  if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
+  {
+    return 0;
+  }
+  return (strstr(buf, "SEND OK") != NULL) ||
+         (strstr(buf, "200 OK") != NULL) ||
+         (strstr(buf, "Recv ") != NULL);
 }
 
 static HAL_StatusTypeDef Esp8266_SendLine(const char *tag, const char *line, uint32_t wait_ms)
 {
   static char rx[ESP8266_BUF_SZ];
-  char line1[22];
-  char line2[22];
-  char line3[22];
-  char line4[22];
-  char line5[22];
   HAL_StatusTypeDef st;
-  size_t tx_len;
 
   Esp8266_DrainRx(30U);
-  tx_len = strlen(line);
-  (void)snprintf(line1, sizeof(line1), "%s TX", (tag != NULL) ? tag : "?");
-  (void)snprintf(line2, sizeof(line2), "TX:%uB wait:%lums",
-                 (unsigned)tx_len, (unsigned long)wait_ms);
-  Esp8266_SetDiag6(line1, line2, "RX:waiting...", "PA2->ESP RX",
-                   "PA3<-ESP TX", "GND common");
 #if ESP8266_DEBUG_PRINT
   printf("[ESP8266] TX %s\r\n", tag);
 #endif
   if (HAL_UART_Transmit(&huart2, (uint8_t *)line, (uint16_t)strlen(line), 2000U) != HAL_OK)
   {
-    (void)snprintf(line1, sizeof(line1), "%s TX ERR", (tag != NULL) ? tag : "?");
-    Esp8266_SetDiag6(line1, "HAL_UART_TX_FAIL", "check huart2 init", "PA2/PA3 wiring",
-                     "GND common", "ESP EN high");
 #if ESP8266_DEBUG_PRINT
     printf("[ESP8266] TX %s uart error\r\n", tag);
 #endif
@@ -289,21 +137,8 @@ static HAL_StatusTypeDef Esp8266_SendLine(const char *tag, const char *line, uin
   }
   (void)memset(rx, 0, sizeof(rx));
   (void)Esp8266_ReadUntilIdle(rx, sizeof(rx), wait_ms);
-  Esp8266_SummarizeRx(rx, line2, sizeof(line2));
-  (void)snprintf(line3, sizeof(line3), "RX bytes:%u", (unsigned)g_esp8266_last_rx_bytes);
   Esp8266_DebugResponse(tag, rx);
   st = Esp8266_ResponseHasOk(rx) ? HAL_OK : HAL_ERROR;
-  if (st == HAL_OK)
-  {
-    (void)snprintf(line1, sizeof(line1), "%s OK", (tag != NULL) ? tag : "?");
-  }
-  else
-  {
-    (void)snprintf(line1, sizeof(line1), "%s FAIL", (tag != NULL) ? tag : "?");
-  }
-  (void)snprintf(line4, sizeof(line4), "wait:%lums", (unsigned long)wait_ms);
-  (void)snprintf(line5, sizeof(line5), "TX:%uB ok", (unsigned)tx_len);
-  Esp8266_SetDiag6(line1, line2, line3, line4, line5, "GND/EN/RST/BAUD");
   return st;
 }
 
@@ -325,62 +160,19 @@ static HAL_StatusTypeDef Esp8266_WaitChar(char want, uint32_t timeout_ms)
   return HAL_ERROR;
 }
 
-static void Esp8266_SoftReset(void)
-{
-  Esp8266_SetDiag6("AT RESET", "AT+RST", "wait 2800ms", "ESP rebooting",
-                   "boot msg normal", "retry after boot");
-  Esp8266_DrainRx(50U);
-  (void)HAL_UART_Transmit(&huart2, (uint8_t *)"AT+RST\r\n", 8U, 2000U);
-  HAL_Delay(2800);
-  Esp8266_DrainRx(500U);
-}
-
-static HAL_StatusTypeDef Esp8266_SyncAt(void)
-{
-  uint32_t attempt;
-  char line2[22];
-
-  for (attempt = 1U; attempt <= 3U; attempt++)
-  {
-    (void)snprintf(line2, sizeof(line2), "TRY %lu/3", (unsigned long)attempt);
-    Esp8266_SetDiag6("AT SYNC", line2, "send AT", "wait for OK", "PA2/PA3 active", "GND common");
-    if (Esp8266_SendLine("AT", "AT\r\n", ESP8266_AT_TIMEOUT_MS) == HAL_OK)
-    {
-      return HAL_OK;
-    }
-    HAL_Delay(120);
-  }
-
-  Esp8266_SoftReset();
-
-  for (attempt = 1U; attempt <= 2U; attempt++)
-  {
-    (void)snprintf(line2, sizeof(line2), "RST TRY %lu/2", (unsigned long)attempt);
-    Esp8266_SetDiag6("AT SYNC", line2, "send AT", "after reset", "ESP boot done?", "baud still 115200");
-    if (Esp8266_SendLine("AT", "AT\r\n", ESP8266_AT_TIMEOUT_MS) == HAL_OK)
-    {
-      return HAL_OK;
-    }
-    HAL_Delay(150);
-  }
-
-  return HAL_ERROR;
-}
-
 HAL_StatusTypeDef Esp8266_Setup(void)
 {
   char cmd[96];
 
-  HAL_Delay(400);
-  Esp8266_DrainRx(300U);
-  Esp8266_SetDiag6("BOOT", "WAIT 400ms", "drain boot junk", "USART2 115200",
-                   "ESP EN=3V3", "GND common");
+  /* Boot garbage on UART + ESP power stable */
+  HAL_Delay(300);
+  Esp8266_DrainRx(200U);
   printf("[ESP8266] setup start: USART2 PA2->ESP_RX PA3<-ESP_TX, debug on USART1 PA9/PA10\r\n");
-  if (Esp8266_SyncAt() != HAL_OK)
+  if (Esp8266_SendLine("AT", "AT\r\n", ESP8266_AT_FIRST_MS) != HAL_OK)
   {
     return HAL_ERROR;
   }
-  if (Esp8266_SendLine("ATE0", "ATE0\r\n", 800U) != HAL_OK)
+  if (Esp8266_SendLine("ATE0", "ATE0\r\n", ESP8266_AT_OTHER_MS) != HAL_OK)
   {
     return HAL_ERROR;
   }
@@ -404,7 +196,7 @@ HAL_StatusTypeDef Esp8266_Setup(void)
 
 HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
 {
-  char json[384];
+  char json[ESP8266_JSON_BUF_SZ];
   char http[ESP8266_BUF_SZ];
   char cmd[80];
   int jl;
@@ -485,7 +277,7 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
     (void)memset(rx, 0, sizeof(rx));
     (void)Esp8266_ReadUntilIdle(rx, sizeof(rx), 8000U);
     Esp8266_DebugResponse("HTTP SEND", rx);
-    if (strstr(rx, "SEND OK") == NULL)
+    if (Esp8266_ResponseHasSendSuccess(rx) == 0)
     {
       (void)Esp8266_SendLine("CIPCLOSE", "AT+CIPCLOSE\r\n", 3000U);
       return HAL_ERROR;
@@ -507,36 +299,6 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
 {
   (void)stats;
   return HAL_ERROR;
-}
-
-const char *Esp8266_GetLastDiagLine1(void)
-{
-  return "ESP OFF";
-}
-
-const char *Esp8266_GetLastDiagLine2(void)
-{
-  return "";
-}
-
-const char *Esp8266_GetLastDiagLine3(void)
-{
-  return "";
-}
-
-const char *Esp8266_GetLastDiagLine4(void)
-{
-  return "";
-}
-
-const char *Esp8266_GetLastDiagLine5(void)
-{
-  return "";
-}
-
-const char *Esp8266_GetLastDiagLine6(void)
-{
-  return "";
 }
 
 #endif /* APP_ENABLE_ESP8266 */

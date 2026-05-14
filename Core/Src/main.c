@@ -420,23 +420,6 @@ static void App_OledShowStatus(const char *line1, const char *line2, const char 
   (void)SSD1306_Update(&hi2c1);
 }
 
-#if APP_ENABLE_ESP8266
-static void App_OledShowEsp8266Diag(void)
-{
-  SSD1306_DisplayOn();
-  SSD1306_Clear();
-  SSD1306_DrawStr5x7(0, 0, "ESP ERR");
-  SSD1306_DrawStr5x7(0, 1, Esp8266_GetLastDiagLine1());
-  SSD1306_DrawStr5x7(0, 2, Esp8266_GetLastDiagLine2());
-  SSD1306_DrawStr5x7(0, 3, Esp8266_GetLastDiagLine3());
-  SSD1306_DrawStr5x7(0, 4, Esp8266_GetLastDiagLine4());
-  SSD1306_DrawStr5x7(0, 5, Esp8266_GetLastDiagLine5());
-  SSD1306_DrawStr5x7(0, 6, Esp8266_GetLastDiagLine6());
-  SSD1306_DrawStr5x7(0, 7, "STOP");
-  (void)SSD1306_Update(&hi2c1);
-}
-#endif
-
 /* aht_disp: 0=no/off, 1=OK show T/RH, 2=on bus but read error */
 static void App_OledRedraw(float Tc, float Rh, uint8_t aht_disp, uint16_t eco2, uint16_t tvoc, uint8_t sgp_disp)
 {
@@ -882,14 +865,9 @@ int main(void)
 #if APP_ENABLE_OLED
     if (g_oled_ok != 0U)
     {
-      App_OledShowEsp8266Diag();
+      App_OledShowStatus("SENSOR READY", "ESP ERR", "RUN LOCAL");
     }
 #endif
-    while (1)
-    {
-      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-      HAL_Delay(500);
-    }
   }
 #endif
 
