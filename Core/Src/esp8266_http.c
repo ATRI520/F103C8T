@@ -9,9 +9,6 @@
 #define ESP8266_CWJAP_TIMEOUT_MS (25000U)
 #define ESP8266_BUF_SZ           (768U)
 #define ESP8266_JSON_BUF_SZ      (384U)
-/* First AT after power-on: echo "AT" then "OK"; 500 ms is often too short if ESP is busy. */
-#define ESP8266_AT_FIRST_MS      (2500U)
-#define ESP8266_AT_OTHER_MS      (800U)
 
 #if ESP8266_DEBUG_PRINT
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
@@ -71,8 +68,7 @@ static HAL_StatusTypeDef Esp8266_ReadUntilIdle(char *buf, size_t buf_sz, uint32_
       {
         break;
       }
-      /* Do not use strstr(..., "FAIL") — matches "FAILED", "FAILSAFE", etc. */
-      if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
+      if (strstr(buf, "FAIL") != NULL)
       {
         break;
       }
@@ -91,13 +87,11 @@ static int Esp8266_ResponseHasOk(const char *buf)
   {
     return 0;
   }
-  if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
+  if (strstr(buf, "FAIL") != NULL)
   {
     return 0;
   }
-  /* Accept OK after echo: "AT\r\n\r\nOK\r\n" or trailing "OK\r\n". */
-  return (strstr(buf, "\r\nOK\r\n") != NULL) || (strstr(buf, "\r\nOK") != NULL) ||
-         (strstr(buf, "OK\r\n") != NULL);
+  return strstr(buf, "OK") != NULL;
 }
 
 static int Esp8266_ResponseHasSendSuccess(const char *buf)
@@ -106,11 +100,7 @@ static int Esp8266_ResponseHasSendSuccess(const char *buf)
   {
     return 0;
   }
-  if (strstr(buf, "ERROR") != NULL)
-  {
-    return 0;
-  }
-  if (strstr(buf, "\r\nFAIL\r\n") != NULL || strstr(buf, "\nFAIL\n") != NULL)
+  if ((strstr(buf, "ERROR") != NULL) || (strstr(buf, "FAIL") != NULL))
   {
     return 0;
   }
@@ -164,15 +154,13 @@ HAL_StatusTypeDef Esp8266_Setup(void)
 {
   char cmd[96];
 
-  /* Boot garbage on UART + ESP power stable */
-  HAL_Delay(300);
-  Esp8266_DrainRx(200U);
+  HAL_Delay(200);
   printf("[ESP8266] setup start: USART2 PA2->ESP_RX PA3<-ESP_TX, debug on USART1 PA9/PA10\r\n");
-  if (Esp8266_SendLine("AT", "AT\r\n", ESP8266_AT_FIRST_MS) != HAL_OK)
+  if (Esp8266_SendLine("AT", "AT\r\n", 500U) != HAL_OK)
   {
     return HAL_ERROR;
   }
-  if (Esp8266_SendLine("ATE0", "ATE0\r\n", ESP8266_AT_OTHER_MS) != HAL_OK)
+  if (Esp8266_SendLine("ATE0", "ATE0\r\n", 500U) != HAL_OK)
   {
     return HAL_ERROR;
   }
