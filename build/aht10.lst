@@ -1,0 +1,546 @@
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"aht10.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "Core/Src/aht10.c"
+  18              		.section	.rodata.AHT10_Init.str1.4,"aMS",%progbits,1
+  19              		.align	2
+  20              	.LC0:
+  21 0000 E10800   		.ascii	"\341\010\000"
+  22              		.section	.text.AHT10_Init,"ax",%progbits
+  23              		.align	1
+  24              		.global	AHT10_Init
+  25              		.syntax unified
+  26              		.thumb
+  27              		.thumb_func
+  29              	AHT10_Init:
+  30              	.LVL0:
+  31              	.LFB65:
+   1:Core/Src/aht10.c **** #include "aht10.h"
+   2:Core/Src/aht10.c **** 
+   3:Core/Src/aht10.c **** #define AHT10_ADDR_7BIT          (0x38U)
+   4:Core/Src/aht10.c **** #define AHT10_ADDR               (AHT10_ADDR_7BIT << 1)
+   5:Core/Src/aht10.c **** #define AHT10_CMD_INIT           (0xE1U)
+   6:Core/Src/aht10.c **** #define AHT10_CMD_SOFT_RESET     (0xBAU)
+   7:Core/Src/aht10.c **** #define AHT10_CMD_TRIGGER        (0xACU)
+   8:Core/Src/aht10.c **** #define AHT10_CALIBRATED_MASK    (0x08U)
+   9:Core/Src/aht10.c **** #define AHT10_BUSY_MASK          (0x80U)
+  10:Core/Src/aht10.c **** #define AHT10_I2C_TIMEOUT_MS     (100U)
+  11:Core/Src/aht10.c **** 
+  12:Core/Src/aht10.c **** HAL_StatusTypeDef AHT10_Init(I2C_HandleTypeDef *hi2c)
+  13:Core/Src/aht10.c **** {
+  32              		.loc 1 13 1 view -0
+  33              		.cfi_startproc
+  34              		@ args = 0, pretend = 0, frame = 8
+  35              		@ frame_needed = 0, uses_anonymous_args = 0
+  36              		.loc 1 13 1 is_stmt 0 view .LVU1
+  37 0000 10B5     		push	{r4, lr}
+  38              	.LCFI0:
+  39              		.cfi_def_cfa_offset 8
+  40              		.cfi_offset 4, -8
+  41              		.cfi_offset 14, -4
+  42 0002 84B0     		sub	sp, sp, #16
+  43              	.LCFI1:
+  44              		.cfi_def_cfa_offset 24
+  45 0004 0446     		mov	r4, r0
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 2
+
+
+  14:Core/Src/aht10.c ****   HAL_StatusTypeDef status;
+  46              		.loc 1 14 3 is_stmt 1 view .LVU2
+  15:Core/Src/aht10.c ****   uint8_t soft_reset[1] = {AHT10_CMD_SOFT_RESET};
+  47              		.loc 1 15 3 view .LVU3
+  48              		.loc 1 15 11 is_stmt 0 view .LVU4
+  49 0006 BA23     		movs	r3, #186
+  50 0008 8DF80C30 		strb	r3, [sp, #12]
+  16:Core/Src/aht10.c ****   uint8_t init_cmd[3] = {AHT10_CMD_INIT, 0x08U, 0x00U};
+  51              		.loc 1 16 3 is_stmt 1 view .LVU5
+  52              		.loc 1 16 11 is_stmt 0 view .LVU6
+  53 000c 0E4B     		ldr	r3, .L5
+  54 000e 1B68     		ldr	r3, [r3]
+  55 0010 ADF80830 		strh	r3, [sp, #8]	@ movhi
+  56 0014 1B0C     		lsrs	r3, r3, #16
+  57 0016 8DF80A30 		strb	r3, [sp, #10]
+  17:Core/Src/aht10.c **** 
+  18:Core/Src/aht10.c ****   status = HAL_I2C_Master_Transmit(hi2c, AHT10_ADDR, soft_reset, sizeof(soft_reset), AHT10_I2C_TIME
+  58              		.loc 1 18 3 is_stmt 1 view .LVU7
+  59              		.loc 1 18 12 is_stmt 0 view .LVU8
+  60 001a 6423     		movs	r3, #100
+  61 001c 0093     		str	r3, [sp]
+  62 001e 0123     		movs	r3, #1
+  63 0020 03AA     		add	r2, sp, #12
+  64 0022 7021     		movs	r1, #112
+  65 0024 FFF7FEFF 		bl	HAL_I2C_Master_Transmit
+  66              	.LVL1:
+  19:Core/Src/aht10.c ****   if (status != HAL_OK)
+  67              		.loc 1 19 3 is_stmt 1 view .LVU9
+  68              		.loc 1 19 6 is_stmt 0 view .LVU10
+  69 0028 08B1     		cbz	r0, .L4
+  70              	.L2:
+  20:Core/Src/aht10.c ****   {
+  21:Core/Src/aht10.c ****     return status;
+  22:Core/Src/aht10.c ****   }
+  23:Core/Src/aht10.c ****   HAL_Delay(40);
+  24:Core/Src/aht10.c **** 
+  25:Core/Src/aht10.c ****   return HAL_I2C_Master_Transmit(hi2c, AHT10_ADDR, init_cmd, sizeof(init_cmd), AHT10_I2C_TIMEOUT_MS
+  26:Core/Src/aht10.c **** }
+  71              		.loc 1 26 1 view .LVU11
+  72 002a 04B0     		add	sp, sp, #16
+  73              	.LCFI2:
+  74              		.cfi_remember_state
+  75              		.cfi_def_cfa_offset 8
+  76              		@ sp needed
+  77 002c 10BD     		pop	{r4, pc}
+  78              	.LVL2:
+  79              	.L4:
+  80              	.LCFI3:
+  81              		.cfi_restore_state
+  23:Core/Src/aht10.c **** 
+  82              		.loc 1 23 3 is_stmt 1 view .LVU12
+  83 002e 2820     		movs	r0, #40
+  84 0030 FFF7FEFF 		bl	HAL_Delay
+  85              	.LVL3:
+  25:Core/Src/aht10.c **** }
+  86              		.loc 1 25 3 view .LVU13
+  25:Core/Src/aht10.c **** }
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 3
+
+
+  87              		.loc 1 25 10 is_stmt 0 view .LVU14
+  88 0034 6423     		movs	r3, #100
+  89 0036 0093     		str	r3, [sp]
+  90 0038 0323     		movs	r3, #3
+  91 003a 02AA     		add	r2, sp, #8
+  92 003c 7021     		movs	r1, #112
+  93 003e 2046     		mov	r0, r4
+  94 0040 FFF7FEFF 		bl	HAL_I2C_Master_Transmit
+  95              	.LVL4:
+  96 0044 F1E7     		b	.L2
+  97              	.L6:
+  98 0046 00BF     		.align	2
+  99              	.L5:
+ 100 0048 00000000 		.word	.LC0
+ 101              		.cfi_endproc
+ 102              	.LFE65:
+ 104              		.global	__aeabi_ui2f
+ 105              		.global	__aeabi_fmul
+ 106              		.global	__aeabi_fsub
+ 107              		.section	.rodata.AHT10_Read.str1.4,"aMS",%progbits,1
+ 108              		.align	2
+ 109              	.LC1:
+ 110 0000 AC3300   		.ascii	"\2543\000"
+ 111              		.section	.text.AHT10_Read,"ax",%progbits
+ 112              		.align	1
+ 113              		.global	AHT10_Read
+ 114              		.syntax unified
+ 115              		.thumb
+ 116              		.thumb_func
+ 118              	AHT10_Read:
+ 119              	.LVL5:
+ 120              	.LFB66:
+  27:Core/Src/aht10.c **** 
+  28:Core/Src/aht10.c **** HAL_StatusTypeDef AHT10_Read(I2C_HandleTypeDef *hi2c, float *temperature_c, float *humidity_rh)
+  29:Core/Src/aht10.c **** {
+ 121              		.loc 1 29 1 is_stmt 1 view -0
+ 122              		.cfi_startproc
+ 123              		@ args = 0, pretend = 0, frame = 16
+ 124              		@ frame_needed = 0, uses_anonymous_args = 0
+ 125              		.loc 1 29 1 is_stmt 0 view .LVU16
+ 126 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 127              	.LCFI4:
+ 128              		.cfi_def_cfa_offset 24
+ 129              		.cfi_offset 4, -24
+ 130              		.cfi_offset 5, -20
+ 131              		.cfi_offset 6, -16
+ 132              		.cfi_offset 7, -12
+ 133              		.cfi_offset 8, -8
+ 134              		.cfi_offset 14, -4
+ 135 0004 86B0     		sub	sp, sp, #24
+ 136              	.LCFI5:
+ 137              		.cfi_def_cfa_offset 48
+  30:Core/Src/aht10.c ****   HAL_StatusTypeDef status;
+ 138              		.loc 1 30 3 is_stmt 1 view .LVU17
+  31:Core/Src/aht10.c ****   uint8_t trigger_cmd[3] = {AHT10_CMD_TRIGGER, 0x33U, 0x00U};
+ 139              		.loc 1 31 3 view .LVU18
+ 140              		.loc 1 31 11 is_stmt 0 view .LVU19
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 4
+
+
+ 141 0006 3B4B     		ldr	r3, .L20
+ 142 0008 1B68     		ldr	r3, [r3]
+ 143 000a ADF81430 		strh	r3, [sp, #20]	@ movhi
+ 144 000e 1B0C     		lsrs	r3, r3, #16
+ 145 0010 8DF81630 		strb	r3, [sp, #22]
+  32:Core/Src/aht10.c ****   uint8_t data[6];
+ 146              		.loc 1 32 3 is_stmt 1 view .LVU20
+  33:Core/Src/aht10.c ****   uint32_t raw_h;
+ 147              		.loc 1 33 3 view .LVU21
+  34:Core/Src/aht10.c ****   uint32_t raw_t;
+ 148              		.loc 1 34 3 view .LVU22
+  35:Core/Src/aht10.c **** 
+  36:Core/Src/aht10.c ****   if ((hi2c == NULL) || (temperature_c == NULL) || (humidity_rh == NULL))
+ 149              		.loc 1 36 3 view .LVU23
+ 150              		.loc 1 36 6 is_stmt 0 view .LVU24
+ 151 0014 0028     		cmp	r0, #0
+ 152 0016 5ED0     		beq	.L12
+ 153 0018 0D46     		mov	r5, r1
+ 154 001a 1646     		mov	r6, r2
+ 155 001c 0746     		mov	r7, r0
+ 156              		.loc 1 36 22 discriminator 1 view .LVU25
+ 157 001e 0029     		cmp	r1, #0
+ 158 0020 5CD0     		beq	.L13
+ 159              		.loc 1 36 49 discriminator 2 view .LVU26
+ 160 0022 002A     		cmp	r2, #0
+ 161 0024 5DD0     		beq	.L14
+  37:Core/Src/aht10.c ****   {
+  38:Core/Src/aht10.c ****     return HAL_ERROR;
+  39:Core/Src/aht10.c ****   }
+  40:Core/Src/aht10.c **** 
+  41:Core/Src/aht10.c ****   status = HAL_I2C_Master_Transmit(hi2c, AHT10_ADDR, trigger_cmd, sizeof(trigger_cmd), AHT10_I2C_TI
+ 162              		.loc 1 41 3 is_stmt 1 view .LVU27
+ 163              		.loc 1 41 12 is_stmt 0 view .LVU28
+ 164 0026 6423     		movs	r3, #100
+ 165 0028 0093     		str	r3, [sp]
+ 166 002a 0323     		movs	r3, #3
+ 167 002c 05AA     		add	r2, sp, #20
+ 168              	.LVL6:
+ 169              		.loc 1 41 12 view .LVU29
+ 170 002e 7021     		movs	r1, #112
+ 171              	.LVL7:
+ 172              		.loc 1 41 12 view .LVU30
+ 173 0030 FFF7FEFF 		bl	HAL_I2C_Master_Transmit
+ 174              	.LVL8:
+  42:Core/Src/aht10.c ****   if (status != HAL_OK)
+ 175              		.loc 1 42 3 is_stmt 1 view .LVU31
+ 176              		.loc 1 42 6 is_stmt 0 view .LVU32
+ 177 0034 8046     		mov	r8, r0
+ 178 0036 18B1     		cbz	r0, .L18
+ 179              	.LVL9:
+ 180              	.L8:
+  43:Core/Src/aht10.c ****   {
+  44:Core/Src/aht10.c ****     return status;
+  45:Core/Src/aht10.c ****   }
+  46:Core/Src/aht10.c **** 
+  47:Core/Src/aht10.c ****   /* Datasheet: measurement time typ. 75 ms; poll until busy clears */
+  48:Core/Src/aht10.c ****   HAL_Delay(80);
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 5
+
+
+  49:Core/Src/aht10.c **** 
+  50:Core/Src/aht10.c ****   for (uint32_t attempt = 0U; attempt < 30U; attempt++)
+  51:Core/Src/aht10.c ****   {
+  52:Core/Src/aht10.c ****     status = HAL_I2C_Master_Receive(hi2c, AHT10_ADDR, data, sizeof(data), AHT10_I2C_TIMEOUT_MS);
+  53:Core/Src/aht10.c ****     if (status != HAL_OK)
+  54:Core/Src/aht10.c ****     {
+  55:Core/Src/aht10.c ****       return status;
+  56:Core/Src/aht10.c ****     }
+  57:Core/Src/aht10.c ****     if ((data[0] & AHT10_BUSY_MASK) == 0U)
+  58:Core/Src/aht10.c ****     {
+  59:Core/Src/aht10.c ****       break;
+  60:Core/Src/aht10.c ****     }
+  61:Core/Src/aht10.c ****     HAL_Delay(10);
+  62:Core/Src/aht10.c ****   }
+  63:Core/Src/aht10.c **** 
+  64:Core/Src/aht10.c ****   if ((data[0] & AHT10_BUSY_MASK) != 0U)
+  65:Core/Src/aht10.c ****   {
+  66:Core/Src/aht10.c ****     return HAL_TIMEOUT;
+  67:Core/Src/aht10.c ****   }
+  68:Core/Src/aht10.c **** 
+  69:Core/Src/aht10.c ****   /* Some modules clear busy before calibration bit is set; still parse if plausible */
+  70:Core/Src/aht10.c ****   if ((data[0] & AHT10_CALIBRATED_MASK) == 0U)
+  71:Core/Src/aht10.c ****   {
+  72:Core/Src/aht10.c ****     /* allow read to proceed — raw values may still be valid after power-up */
+  73:Core/Src/aht10.c ****   }
+  74:Core/Src/aht10.c **** 
+  75:Core/Src/aht10.c ****   raw_h = ((uint32_t)data[1] << 12) | ((uint32_t)data[2] << 4) | ((uint32_t)data[3] >> 4);
+  76:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+  77:Core/Src/aht10.c **** 
+  78:Core/Src/aht10.c ****   *humidity_rh = ((float)raw_h * 100.0f) / 1048576.0f;
+  79:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+  80:Core/Src/aht10.c **** 
+  81:Core/Src/aht10.c ****   return HAL_OK;
+  82:Core/Src/aht10.c **** }
+ 181              		.loc 1 82 1 view .LVU33
+ 182 0038 4046     		mov	r0, r8
+ 183 003a 06B0     		add	sp, sp, #24
+ 184              	.LCFI6:
+ 185              		.cfi_remember_state
+ 186              		.cfi_def_cfa_offset 24
+ 187              		@ sp needed
+ 188 003c BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 189              	.LVL10:
+ 190              	.L18:
+ 191              	.LCFI7:
+ 192              		.cfi_restore_state
+  48:Core/Src/aht10.c **** 
+ 193              		.loc 1 48 3 is_stmt 1 view .LVU34
+ 194 0040 5020     		movs	r0, #80
+ 195              	.LVL11:
+  48:Core/Src/aht10.c **** 
+ 196              		.loc 1 48 3 is_stmt 0 view .LVU35
+ 197 0042 FFF7FEFF 		bl	HAL_Delay
+ 198              	.LVL12:
+  50:Core/Src/aht10.c ****   {
+ 199              		.loc 1 50 3 is_stmt 1 view .LVU36
+ 200              	.LBB2:
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 6
+
+
+  50:Core/Src/aht10.c ****   {
+ 201              		.loc 1 50 8 view .LVU37
+  50:Core/Src/aht10.c ****   {
+ 202              		.loc 1 50 17 is_stmt 0 view .LVU38
+ 203 0046 0024     		movs	r4, #0
+  50:Core/Src/aht10.c ****   {
+ 204              		.loc 1 50 3 view .LVU39
+ 205 0048 03E0     		b	.L9
+ 206              	.LVL13:
+ 207              	.L19:
+  61:Core/Src/aht10.c ****   }
+ 208              		.loc 1 61 5 is_stmt 1 discriminator 2 view .LVU40
+ 209 004a 0A20     		movs	r0, #10
+ 210              	.LVL14:
+  61:Core/Src/aht10.c ****   }
+ 211              		.loc 1 61 5 is_stmt 0 discriminator 2 view .LVU41
+ 212 004c FFF7FEFF 		bl	HAL_Delay
+ 213              	.LVL15:
+  50:Core/Src/aht10.c ****   {
+ 214              		.loc 1 50 53 is_stmt 1 discriminator 2 view .LVU42
+ 215 0050 0134     		adds	r4, r4, #1
+ 216              	.LVL16:
+ 217              	.L9:
+  50:Core/Src/aht10.c ****   {
+ 218              		.loc 1 50 39 discriminator 1 view .LVU43
+ 219 0052 1D2C     		cmp	r4, #29
+ 220 0054 0DD8     		bhi	.L10
+  52:Core/Src/aht10.c ****     if (status != HAL_OK)
+ 221              		.loc 1 52 5 view .LVU44
+  52:Core/Src/aht10.c ****     if (status != HAL_OK)
+ 222              		.loc 1 52 14 is_stmt 0 view .LVU45
+ 223 0056 6423     		movs	r3, #100
+ 224 0058 0093     		str	r3, [sp]
+ 225 005a 0623     		movs	r3, #6
+ 226 005c 03AA     		add	r2, sp, #12
+ 227 005e 7021     		movs	r1, #112
+ 228 0060 3846     		mov	r0, r7
+ 229 0062 FFF7FEFF 		bl	HAL_I2C_Master_Receive
+ 230              	.LVL17:
+  53:Core/Src/aht10.c ****     {
+ 231              		.loc 1 53 5 is_stmt 1 view .LVU46
+  53:Core/Src/aht10.c ****     {
+ 232              		.loc 1 53 8 is_stmt 0 view .LVU47
+ 233 0066 0028     		cmp	r0, #0
+ 234 0068 3ED1     		bne	.L15
+  57:Core/Src/aht10.c ****     {
+ 235              		.loc 1 57 5 is_stmt 1 view .LVU48
+  57:Core/Src/aht10.c ****     {
+ 236              		.loc 1 57 37 is_stmt 0 view .LVU49
+ 237 006a 9DF90C30 		ldrsb	r3, [sp, #12]
+  57:Core/Src/aht10.c ****     {
+ 238              		.loc 1 57 8 view .LVU50
+ 239 006e 002B     		cmp	r3, #0
+ 240 0070 EBDB     		blt	.L19
+ 241              	.LVL18:
+ 242              	.L10:
+  57:Core/Src/aht10.c ****     {
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 7
+
+
+ 243              		.loc 1 57 8 view .LVU51
+ 244              	.LBE2:
+  64:Core/Src/aht10.c ****   {
+ 245              		.loc 1 64 3 is_stmt 1 view .LVU52
+  64:Core/Src/aht10.c ****   {
+ 246              		.loc 1 64 35 is_stmt 0 view .LVU53
+ 247 0072 9DF90C30 		ldrsb	r3, [sp, #12]
+  64:Core/Src/aht10.c ****   {
+ 248              		.loc 1 64 6 view .LVU54
+ 249 0076 002B     		cmp	r3, #0
+ 250 0078 38DB     		blt	.L16
+  70:Core/Src/aht10.c ****   {
+ 251              		.loc 1 70 3 is_stmt 1 view .LVU55
+  73:Core/Src/aht10.c **** 
+ 252              		.loc 1 73 3 view .LVU56
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 253              		.loc 1 75 3 view .LVU57
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 254              		.loc 1 75 26 is_stmt 0 view .LVU58
+ 255 007a 9DF80D20 		ldrb	r2, [sp, #13]	@ zero_extendqisi2
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 256              		.loc 1 75 54 view .LVU59
+ 257 007e 9DF80E30 		ldrb	r3, [sp, #14]	@ zero_extendqisi2
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 258              		.loc 1 75 58 view .LVU60
+ 259 0082 1B01     		lsls	r3, r3, #4
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 260              		.loc 1 75 37 view .LVU61
+ 261 0084 43EA0233 		orr	r3, r3, r2, lsl #12
+  75:Core/Src/aht10.c ****   raw_t = (((uint32_t)data[3] & 0x0FU) << 16) | ((uint32_t)data[4] << 8) | data[5];
+ 262              		.loc 1 75 81 view .LVU62
+ 263 0088 9DF80F00 		ldrb	r0, [sp, #15]	@ zero_extendqisi2
+ 264              	.LVL19:
+  76:Core/Src/aht10.c **** 
+ 265              		.loc 1 76 3 is_stmt 1 view .LVU63
+  76:Core/Src/aht10.c **** 
+ 266              		.loc 1 76 40 is_stmt 0 view .LVU64
+ 267 008c 0404     		lsls	r4, r0, #16
+ 268              	.LVL20:
+  76:Core/Src/aht10.c **** 
+ 269              		.loc 1 76 40 view .LVU65
+ 270 008e 04F47024 		and	r4, r4, #983040
+  76:Core/Src/aht10.c **** 
+ 271              		.loc 1 76 64 view .LVU66
+ 272 0092 9DF81020 		ldrb	r2, [sp, #16]	@ zero_extendqisi2
+  76:Core/Src/aht10.c **** 
+ 273              		.loc 1 76 47 view .LVU67
+ 274 0096 44EA0224 		orr	r4, r4, r2, lsl #8
+  76:Core/Src/aht10.c **** 
+ 275              		.loc 1 76 80 view .LVU68
+ 276 009a 9DF81120 		ldrb	r2, [sp, #17]	@ zero_extendqisi2
+  76:Core/Src/aht10.c **** 
+ 277              		.loc 1 76 9 view .LVU69
+ 278 009e 1443     		orrs	r4, r4, r2
+ 279              	.LVL21:
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 280              		.loc 1 78 3 is_stmt 1 view .LVU70
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 8
+
+
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 281              		.loc 1 78 19 is_stmt 0 view .LVU71
+ 282 00a0 43EA1010 		orr	r0, r3, r0, lsr #4
+ 283              	.LVL22:
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 284              		.loc 1 78 19 view .LVU72
+ 285 00a4 FFF7FEFF 		bl	__aeabi_ui2f
+ 286              	.LVL23:
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 287              		.loc 1 78 32 view .LVU73
+ 288 00a8 1349     		ldr	r1, .L20+4
+ 289 00aa FFF7FEFF 		bl	__aeabi_fmul
+ 290              	.LVL24:
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 291              		.loc 1 78 42 view .LVU74
+ 292 00ae 4FF05651 		mov	r1, #897581056
+ 293 00b2 FFF7FEFF 		bl	__aeabi_fmul
+ 294              	.LVL25:
+  78:Core/Src/aht10.c ****   *temperature_c = ((float)raw_t * 200.0f) / 1048576.0f - 50.0f;
+ 295              		.loc 1 78 16 view .LVU75
+ 296 00b6 3060     		str	r0, [r6]	@ float
+  79:Core/Src/aht10.c **** 
+ 297              		.loc 1 79 3 is_stmt 1 view .LVU76
+  79:Core/Src/aht10.c **** 
+ 298              		.loc 1 79 21 is_stmt 0 view .LVU77
+ 299 00b8 2046     		mov	r0, r4
+ 300 00ba FFF7FEFF 		bl	__aeabi_ui2f
+ 301              	.LVL26:
+  79:Core/Src/aht10.c **** 
+ 302              		.loc 1 79 34 view .LVU78
+ 303 00be 0F49     		ldr	r1, .L20+8
+ 304 00c0 FFF7FEFF 		bl	__aeabi_fmul
+ 305              	.LVL27:
+  79:Core/Src/aht10.c **** 
+ 306              		.loc 1 79 44 view .LVU79
+ 307 00c4 4FF05651 		mov	r1, #897581056
+ 308 00c8 FFF7FEFF 		bl	__aeabi_fmul
+ 309              	.LVL28:
+  79:Core/Src/aht10.c **** 
+ 310              		.loc 1 79 57 view .LVU80
+ 311 00cc 0C49     		ldr	r1, .L20+12
+ 312 00ce FFF7FEFF 		bl	__aeabi_fsub
+ 313              	.LVL29:
+  79:Core/Src/aht10.c **** 
+ 314              		.loc 1 79 18 view .LVU81
+ 315 00d2 2860     		str	r0, [r5]	@ float
+  81:Core/Src/aht10.c **** }
+ 316              		.loc 1 81 3 is_stmt 1 view .LVU82
+  81:Core/Src/aht10.c **** }
+ 317              		.loc 1 81 10 is_stmt 0 view .LVU83
+ 318 00d4 B0E7     		b	.L8
+ 319              	.LVL30:
+ 320              	.L12:
+  38:Core/Src/aht10.c ****   }
+ 321              		.loc 1 38 12 view .LVU84
+ 322 00d6 4FF00108 		mov	r8, #1
+ 323 00da ADE7     		b	.L8
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 9
+
+
+ 324              	.L13:
+  38:Core/Src/aht10.c ****   }
+ 325              		.loc 1 38 12 view .LVU85
+ 326 00dc 4FF00108 		mov	r8, #1
+ 327 00e0 AAE7     		b	.L8
+ 328              	.L14:
+ 329 00e2 4FF00108 		mov	r8, #1
+ 330 00e6 A7E7     		b	.L8
+ 331              	.LVL31:
+ 332              	.L15:
+ 333              	.LBB3:
+  55:Core/Src/aht10.c ****     }
+ 334              		.loc 1 55 14 view .LVU86
+ 335 00e8 8046     		mov	r8, r0
+ 336 00ea A5E7     		b	.L8
+ 337              	.LVL32:
+ 338              	.L16:
+  55:Core/Src/aht10.c ****     }
+ 339              		.loc 1 55 14 view .LVU87
+ 340              	.LBE3:
+  66:Core/Src/aht10.c ****   }
+ 341              		.loc 1 66 12 view .LVU88
+ 342 00ec 4FF00308 		mov	r8, #3
+ 343 00f0 A2E7     		b	.L8
+ 344              	.L21:
+ 345 00f2 00BF     		.align	2
+ 346              	.L20:
+ 347 00f4 00000000 		.word	.LC1
+ 348 00f8 0000C842 		.word	1120403456
+ 349 00fc 00004843 		.word	1128792064
+ 350 0100 00004842 		.word	1112014848
+ 351              		.cfi_endproc
+ 352              	.LFE66:
+ 354              		.text
+ 355              	.Letext0:
+ 356              		.file 2 "c:\\users\\administrator\\.platformio\\packages\\toolchain-gccarmnoneeabi\\arm-none-eabi\
+ 357              		.file 3 "c:\\users\\administrator\\.platformio\\packages\\toolchain-gccarmnoneeabi\\arm-none-eabi\
+ 358              		.file 4 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xb.h"
+ 359              		.file 5 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h"
+ 360              		.file 6 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h"
+ 361              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h"
+ 362              		.file 8 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h"
+ARM GAS  C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s 			page 10
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 aht10.c
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:19     .rodata.AHT10_Init.str1.4:00000000 $d
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:23     .text.AHT10_Init:00000000 $t
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:29     .text.AHT10_Init:00000000 AHT10_Init
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:100    .text.AHT10_Init:00000048 $d
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:108    .rodata.AHT10_Read.str1.4:00000000 $d
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:112    .text.AHT10_Read:00000000 $t
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:118    .text.AHT10_Read:00000000 AHT10_Read
+C:\Users\Administrator\AppData\Local\Temp\cc5zubDw.s:347    .text.AHT10_Read:000000f4 $d
+
+UNDEFINED SYMBOLS
+HAL_I2C_Master_Transmit
+HAL_Delay
+__aeabi_ui2f
+__aeabi_fmul
+__aeabi_fsub
+HAL_I2C_Master_Receive

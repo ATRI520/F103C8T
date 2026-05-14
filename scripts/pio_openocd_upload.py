@@ -1,6 +1,6 @@
-# Post-hook: drop hardware reset from OpenOCD's default "program ... verify reset; shutdown".
-# Fixes upload returning error 1 when flash+verify succeed but NRST is not wired to ST-Link.
-# Keeps generic board (no bluepill "reset_config none") so SWD init stays compatible.
+# Post-hook: avoid hardware reset in OpenOCD upload command.
+# Some Blue Pill + ST-Link setups cannot toggle NRST, so "reset" fails after a good flash.
+# Use "resume" so the CPU actually runs and USART log appears in monitor.
 
 Import("env")
 
@@ -16,7 +16,9 @@ def _patch_openocd_upload_flags():
     for item in flags:
         s = str(item)
         if "verify reset; shutdown" in s:
-            new_flags.append(s.replace("verify reset; shutdown", "verify; shutdown"))
+            new_flags.append(s.replace("verify reset; shutdown", "verify; resume; shutdown"))
+        elif "verify; shutdown" in s:
+            new_flags.append(s.replace("verify; shutdown", "verify; resume; shutdown"))
         else:
             new_flags.append(item)
     env.Replace(UPLOADERFLAGS=new_flags)

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make -j4)",
+      "Bash(ls \"/c/Users/Administrator/.platformio/packages/toolchain-gccarmnoneeabi/bin/\" | head -5)",
+      "Read(//c/Users/Administrator/.platformio/packages/toolchain-gccarmnoneeabi/bin//**)",
+      "Bash(export PATH=\"/c/Users/Administrator/.platformio/packages/toolchain-gccarmnoneeabi/bin:$PATH\")",
+      "Bash(make clean *)"
+    ]
+  }
+}
