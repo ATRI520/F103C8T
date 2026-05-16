@@ -10,13 +10,130 @@
 #define ESP8266_BUF_SZ           (768U)
 #define ESP8266_JSON_BUF_SZ      (384U)
 
+/* F103: framing noise or boot log flood can set ORE; if left uncleared, RX may appear dead. */
+static void Esp8266_UartRecoverHw(void)
+{
+  __HAL_UART_CLEAR_OREFLAG(&huart3);
+  while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_RXNE) != RESET)
+  {
+    volatile uint32_t discard = huart3.Instance->DR;
+    (void)discard;
+  }
+  huart3.ErrorCode = HAL_UART_ERROR_NONE;
+}
+
+/* One-shot USART1 TX so sensor printf cannot splice into ESP RX dumps. */
+static void Esp8266_LogUart1(const char *s)
+{
+  size_t n;
+
+  if ((s == NULL) || (s[0] == '\0'))
+  {
+    return;
+  }
+  n = strlen(s);
+  if (n > 0U)
+  {
+    (void)HAL_UART_Transmit(&huart1, (const uint8_t *)s, (uint16_t)n, 4000U);
+  }
+}
+
 #if ESP8266_DEBUG_PRINT
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
 {
   printf("[ESP8266] %s -> %s\r\n", tag, ((rx != NULL) && (rx[0] != '\0')) ? rx : "(timeout/no response)");
 }
+
+static void Esp8266_DumpRxBuf(const char *tag, const char *rx)
+{
+  static char line[112];
+  size_t len;
+  size_t i;
+
+  if (rx == NULL)
+  {
+    rx = "";
+  }
+  len = strlen(rx);
+
+  (void)snprintf(line, sizeof(line), "\r\n[ESP8266] === %s RX len=%u ===\r\n",
+                 tag, (unsigned)len);
+  Esp8266_LogUart1(line);
+
+  Esp8266_LogUart1("[ESP8266] RAW:\r\n");
+  for (i = 0U; i < len; )
+  {
+    size_t pos = 0U;
+    size_t j;
+    size_t chunk = len - i;
+
+    if (chunk > 48U)
+    {
+      chunk = 48U;
+    }
+    for (j = 0U; j < chunk; j++)
+    {
+      unsigned char c = (unsigned char)rx[i + j];
+
+      if ((c >= 32U) && (c < 127U))
+      {
+        if (pos + 1U < sizeof(line))
+        {
+          line[pos++] = (char)c;
+        }
+      }
+      else if (c == '\r')
+      {
+        if (pos + 2U < sizeof(line))
+        {
+          line[pos++] = '\\';
+          line[pos++] = 'r';
+        }
+      }
+      else if (c == '\n')
+      {
+        if (pos + 2U < sizeof(line))
+        {
+          line[pos++] = '\\';
+          line[pos++] = 'n';
+        }
+      }
+      else if (pos + 1U < sizeof(line))
+      {
+        line[pos++] = '.';
+      }
+    }
+    line[pos] = '\0';
+    Esp8266_LogUart1(line);
+    Esp8266_LogUart1("\r\n");
+    i += chunk;
+  }
+
+  Esp8266_LogUart1("[ESP8266] HEX:\r\n");
+  for (i = 0U; i < len; i += 16U)
+  {
+    size_t pos = 0U;
+    size_t j;
+
+    pos = (size_t)snprintf(line, sizeof(line), "[ESP8266] %04u:", (unsigned)i);
+    for (j = 0U; (j < 16U) && ((i + j) < len); j++)
+    {
+      pos += (size_t)snprintf(line + pos, sizeof(line) - pos, " %02X",
+                              (unsigned)(unsigned char)rx[i + j]);
+    }
+    (void)snprintf(line + pos, sizeof(line) - pos, "\r\n");
+    Esp8266_LogUart1(line);
+  }
+  Esp8266_LogUart1("[ESP8266] === end dump ===\r\n\r\n");
+}
 #else
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
+{
+  (void)tag;
+  (void)rx;
+}
+
+static void Esp8266_DumpRxBuf(const char *tag, const char *rx)
 {
   (void)tag;
   (void)rx;
@@ -28,9 +145,11 @@ static void Esp8266_DrainRx(uint32_t drain_ms)
   uint8_t b;
   uint32_t t0 = HAL_GetTick();
 
+  Esp8266_UartRecoverHw();
+
   while ((HAL_GetTick() - t0) < drain_ms)
   {
-    (void)HAL_UART_Receive(&huart2, &b, 1U, 5U);
+    (void)HAL_UART_Receive(&huart3, &b, 1U, 5U);
   }
 }
 
@@ -48,7 +167,7 @@ static HAL_StatusTypeDef Esp8266_ReadUntilIdle(char *buf, size_t buf_sz, uint32_
 
   while (HAL_GetTick() < t_end)
   {
-    if (HAL_UART_Receive(&huart2, &ch, 1U, 40U) == HAL_OK)
+    if (HAL_UART_Receive(&huart3, &ch, 1U, 40U) == HAL_OK)
     {
       if (i < buf_sz - 1U)
       {
@@ -91,7 +210,8 @@ static int Esp8266_ResponseHasOk(const char *buf)
   {
     return 0;
   }
-  return strstr(buf, "OK") != NULL;
+  /* Require CRLF before OK so random binary (e.g. 74880-boot garbage mis-decoded) is less likely to false-match. */
+  return (strstr(buf, "\r\nOK") != NULL);
 }
 
 static int Esp8266_ResponseHasSendSuccess(const char *buf)
@@ -109,16 +229,18 @@ static int Esp8266_ResponseHasSendSuccess(const char *buf)
          (strstr(buf, "Recv ") != NULL);
 }
 
-static HAL_StatusTypeDef Esp8266_SendLine(const char *tag, const char *line, uint32_t wait_ms)
+static HAL_StatusTypeDef Esp8266_SendAt(const char *tag, const char *line, uint32_t wait_ms,
+                                        int require_ok, int dump_on_fail)
 {
   static char rx[ESP8266_BUF_SZ];
   HAL_StatusTypeDef st;
+  int ok;
 
   Esp8266_DrainRx(30U);
 #if ESP8266_DEBUG_PRINT
   printf("[ESP8266] TX %s\r\n", tag);
 #endif
-  if (HAL_UART_Transmit(&huart2, (uint8_t *)line, (uint16_t)strlen(line), 2000U) != HAL_OK)
+  if (HAL_UART_Transmit(&huart3, (uint8_t *)line, (uint16_t)strlen(line), 2000U) != HAL_OK)
   {
 #if ESP8266_DEBUG_PRINT
     printf("[ESP8266] TX %s uart error\r\n", tag);
@@ -128,8 +250,23 @@ static HAL_StatusTypeDef Esp8266_SendLine(const char *tag, const char *line, uin
   (void)memset(rx, 0, sizeof(rx));
   (void)Esp8266_ReadUntilIdle(rx, sizeof(rx), wait_ms);
   Esp8266_DebugResponse(tag, rx);
-  st = Esp8266_ResponseHasOk(rx) ? HAL_OK : HAL_ERROR;
+
+  ok = Esp8266_ResponseHasOk(rx);
+  if ((ok == 0) && (dump_on_fail != 0))
+  {
+    Esp8266_DumpRxBuf(tag, rx);
+  }
+  if (require_ok == 0)
+  {
+    return HAL_OK;
+  }
+  st = (ok != 0) ? HAL_OK : HAL_ERROR;
   return st;
+}
+
+static HAL_StatusTypeDef Esp8266_SendLine(const char *tag, const char *line, uint32_t wait_ms)
+{
+  return Esp8266_SendAt(tag, line, wait_ms, 1, 0);
 }
 
 static HAL_StatusTypeDef Esp8266_WaitChar(char want, uint32_t timeout_ms)
@@ -139,7 +276,7 @@ static HAL_StatusTypeDef Esp8266_WaitChar(char want, uint32_t timeout_ms)
 
   while (HAL_GetTick() < t_end)
   {
-    if (HAL_UART_Receive(&huart2, &ch, 1U, 40U) == HAL_OK)
+    if (HAL_UART_Receive(&huart3, &ch, 1U, 40U) == HAL_OK)
     {
       if ((char)ch == want)
       {
@@ -154,13 +291,15 @@ HAL_StatusTypeDef Esp8266_Setup(void)
 {
   char cmd[96];
 
-  HAL_Delay(200);
-  printf("[ESP8266] setup start: USART2 PA2->ESP_RX PA3<-ESP_TX, debug on USART1 PA9/PA10\r\n");
-  if (Esp8266_SendLine("AT", "AT\r\n", 500U) != HAL_OK)
+  /* Power/flash settle; ESP-01S can spew boot bytes — drain before first AT. */
+  HAL_Delay(900);
+  Esp8266_DrainRx(200U);
+  printf("[ESP8266] setup start: USART3 PB10->ESP_RX PB11<-ESP_TX (115200), debug USART1 PA9\r\n");
+  if (Esp8266_SendLine("AT", "AT\r\n", 2000U) != HAL_OK)
   {
     return HAL_ERROR;
   }
-  if (Esp8266_SendLine("ATE0", "ATE0\r\n", 500U) != HAL_OK)
+  if (Esp8266_SendLine("ATE0", "ATE0\r\n", 2000U) != HAL_OK)
   {
     return HAL_ERROR;
   }
@@ -178,7 +317,12 @@ HAL_StatusTypeDef Esp8266_Setup(void)
   {
     return HAL_ERROR;
   }
-  printf("[ESP8266] setup ok\r\n");
+  if (Esp8266_SendLine("CIFSR", "AT+CIFSR\r\n", 3000U) != HAL_OK)
+  {
+    printf("[ESP8266] CIFSR failed (no STA IP yet?)\r\n");
+  }
+  printf("[ESP8266] setup ok (server target %s:%u%s)\r\n",
+         ESP8266_TCP_HOST, (unsigned)ESP8266_TCP_PORT, ESP8266_HTTP_PATH);
   return HAL_OK;
 }
 
@@ -230,8 +374,13 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
   (void)snprintf(cmd, sizeof(cmd), "AT+CIPSTART=\"TCP\",\"%s\",%u\r\n",
                  ESP8266_TCP_HOST, (unsigned)ESP8266_TCP_PORT);
   printf("[ESP8266] POST JSON %s\r\n", json);
-  if (Esp8266_SendLine("CIPSTART", cmd, ESP8266_RX_TIMEOUT_MS) != HAL_OK)
+
+  (void)Esp8266_SendAt("CIPCLOSE", "AT+CIPCLOSE\r\n", 3000U, 0, 0);
+  Esp8266_DrainRx(50U);
+
+  if (Esp8266_SendAt("CIPSTART", cmd, ESP8266_RX_TIMEOUT_MS, 1, 1) != HAL_OK)
   {
+    Esp8266_LogUart1("[ESP8266] CIPSTART failed (see RAW/HEX dump above)\r\n");
     return HAL_ERROR;
   }
 
@@ -240,7 +389,7 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
 #if ESP8266_DEBUG_PRINT
   printf("[ESP8266] TX CIPSEND len=%d\r\n", hl);
 #endif
-  if (HAL_UART_Transmit(&huart2, (uint8_t *)cmd, (uint16_t)strlen(cmd), 2000U) != HAL_OK)
+  if (HAL_UART_Transmit(&huart3, (uint8_t *)cmd, (uint16_t)strlen(cmd), 2000U) != HAL_OK)
   {
     return HAL_ERROR;
   }
@@ -254,7 +403,7 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
 #if ESP8266_DEBUG_PRINT
   printf("[ESP8266] sending HTTP POST payload\r\n");
 #endif
-  if (HAL_UART_Transmit(&huart2, (uint8_t *)http, (uint16_t)hl, 5000U) != HAL_OK)
+  if (HAL_UART_Transmit(&huart3, (uint8_t *)http, (uint16_t)hl, 5000U) != HAL_OK)
   {
     return HAL_ERROR;
   }

@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-/* Set 1 after wiring: STM32 PA2(TX)->ESP RX, PA3(RX)->ESP TX, GND, 3.3V. USART1 stays printf. */
+/* ESP8266 AT UART: USART3 PB10(TX)->ESP RX, PB11(RX)<-ESP TX, GND, 3.3V. USART1 = printf debug. */
 #ifndef APP_ENABLE_ESP8266
 #define APP_ENABLE_ESP8266 1
 #endif
@@ -15,7 +15,7 @@
 #define ESP8266_TCP_PORT      8080U
 #define ESP8266_HTTP_PATH     "/api/data"
 
-/* AT debug is printed by USART1 printf (PA9/PA10); AT traffic itself uses USART2. */
+/* AT debug: USART1 printf (PA9); AT traffic: USART3 PB10/PB11. */
 #ifndef ESP8266_DEBUG_PRINT
 #define ESP8266_DEBUG_PRINT   1
 #endif

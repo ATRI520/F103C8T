@@ -40,7 +40,7 @@
 #include "ssd1306.h"
 #endif
 
-/* ESP8266-01S on USART2 (PA2 TX / PA3 RX); USART1 (PA9/PA10) stays debug printf. */
+/* ESP8266-01S on USART3 (PB10 TX / PB11 RX); USART1 (PA9/PA10) = debug printf. */
 #ifndef APP_ENABLE_ESP8266
 #define APP_ENABLE_ESP8266 1
 #endif
@@ -840,8 +840,8 @@ int main(void)
 #endif
 
 #if APP_ENABLE_ESP8266
-  MX_USART2_UART_Init();
-  printf("[INIT] USART2 115200 AT -> ESP8266 (PA2 TX, PA3 RX)\r\n");
+  MX_USART3_UART_Init();
+  printf("[INIT] USART3 115200 AT -> ESP8266 (PB10 TX->ESP RX, PB11 RX<-ESP TX)\r\n");
 #if APP_ENABLE_OLED
   if (g_oled_ok != 0U)
   {
