@@ -22,11 +22,19 @@ static void Esp8266_UartRecoverHw(void)
   huart3.ErrorCode = HAL_UART_ERROR_NONE;
 }
 
+#ifndef APP_DEBUG_UART
+#define APP_DEBUG_UART 1
+#endif
+
 /* One-shot USART1 TX so sensor printf cannot splice into ESP RX dumps. */
 static void Esp8266_LogUart1(const char *s)
 {
   size_t n;
 
+#if !APP_DEBUG_UART
+  (void)s;
+  return;
+#else
   if ((s == NULL) || (s[0] == '\0'))
   {
     return;
@@ -34,14 +42,20 @@ static void Esp8266_LogUart1(const char *s)
   n = strlen(s);
   if (n > 0U)
   {
-    (void)HAL_UART_Transmit(&huart1, (const uint8_t *)s, (uint16_t)n, 4000U);
+    (void)HAL_UART_Transmit(&huart1, (const uint8_t *)s, (uint16_t)n, 50U);
   }
+#endif
 }
 
 #if ESP8266_DEBUG_PRINT
 static void Esp8266_DebugResponse(const char *tag, const char *rx)
 {
+#if APP_DEBUG_UART
   printf("[ESP8266] %s -> %s\r\n", tag, ((rx != NULL) && (rx[0] != '\0')) ? rx : "(timeout/no response)");
+#else
+  (void)tag;
+  (void)rx;
+#endif
 }
 
 static void Esp8266_DumpRxBuf(const char *tag, const char *rx)
@@ -237,12 +251,12 @@ static HAL_StatusTypeDef Esp8266_SendAt(const char *tag, const char *line, uint3
   int ok;
 
   Esp8266_DrainRx(30U);
-#if ESP8266_DEBUG_PRINT
+#if ESP8266_DEBUG_PRINT && APP_DEBUG_UART
   printf("[ESP8266] TX %s\r\n", tag);
 #endif
   if (HAL_UART_Transmit(&huart3, (uint8_t *)line, (uint16_t)strlen(line), 2000U) != HAL_OK)
   {
-#if ESP8266_DEBUG_PRINT
+#if ESP8266_DEBUG_PRINT && APP_DEBUG_UART
     printf("[ESP8266] TX %s uart error\r\n", tag);
 #endif
     return HAL_ERROR;
@@ -386,7 +400,7 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
 
   (void)snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%d\r\n", hl);
   Esp8266_DrainRx(50U);
-#if ESP8266_DEBUG_PRINT
+#if ESP8266_DEBUG_PRINT && APP_DEBUG_UART
   printf("[ESP8266] TX CIPSEND len=%d\r\n", hl);
 #endif
   if (HAL_UART_Transmit(&huart3, (uint8_t *)cmd, (uint16_t)strlen(cmd), 2000U) != HAL_OK)
@@ -395,12 +409,12 @@ HAL_StatusTypeDef Esp8266_PostSensorJson(const Esp8266_UploadStats *stats)
   }
   if (Esp8266_WaitChar('>', 4000U) != HAL_OK)
   {
-#if ESP8266_DEBUG_PRINT
+#if ESP8266_DEBUG_PRINT && APP_DEBUG_UART
     printf("[ESP8266] CIPSEND prompt timeout\r\n");
 #endif
     return HAL_ERROR;
   }
-#if ESP8266_DEBUG_PRINT
+#if ESP8266_DEBUG_PRINT && APP_DEBUG_UART
   printf("[ESP8266] sending HTTP POST payload\r\n");
 #endif
   if (HAL_UART_Transmit(&huart3, (uint8_t *)http, (uint16_t)hl, 5000U) != HAL_OK)

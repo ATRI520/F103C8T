@@ -20,6 +20,11 @@
 #define ESP8266_DEBUG_PRINT   1
 #endif
 
+/* 0 = no USART1 printf (standalone, COM unplugged); also set in main.c. */
+#ifndef APP_DEBUG_UART
+#define APP_DEBUG_UART        1
+#endif
+
 typedef struct
 {
   float t;

@@ -44,6 +44,9 @@
 #ifndef APP_ENABLE_ESP8266
 #define APP_ENABLE_ESP8266 1
 #endif
+#ifndef APP_DEBUG_UART
+#define APP_DEBUG_UART 0
+#endif
 #include "esp8266_http.h"
 
 /* USER CODE END Includes */
@@ -122,8 +125,12 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 int __io_putchar(int ch)
 {
+#if APP_DEBUG_UART
   uint8_t c = (uint8_t)ch;
-  (void)HAL_UART_Transmit(&huart1, &c, 1U, 1000U);
+  (void)HAL_UART_Transmit(&huart1, &c, 1U, 3U);
+#else
+  (void)ch;
+#endif
   return ch;
 }
 
@@ -754,10 +761,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+#if APP_DEBUG_UART
   {
     static const uint8_t early[] = "\r\n[EARLY] USART1 PA9 TX alive before I2C/OLED/ESP init\r\n";
-    (void)HAL_UART_Transmit(&huart1, (uint8_t *)early, sizeof(early) - 1U, 500U);
+    (void)HAL_UART_Transmit(&huart1, (uint8_t *)early, sizeof(early) - 1U, 50U);
   }
+#endif
   MX_I2C1_Init();
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
@@ -798,11 +807,13 @@ int main(void)
     printf("[INIT] OLED init failed (probe 0x3C/0x3D; JMD096 SSD1315)\r\n");
   }
 #endif
+#if APP_DEBUG_UART
   {
     static const uint8_t alive[] = "APP alive (USART1 raw TX)\r\n";
-    (void)HAL_UART_Transmit(&huart1, (uint8_t *)alive, sizeof(alive) - 1U, 500U);
+    (void)HAL_UART_Transmit(&huart1, (uint8_t *)alive, sizeof(alive) - 1U, 50U);
   }
   printf("[INIT] Raw UART line above = USART1 TX OK (bypass printf).\r\n");
+#endif
 
 #if APP_ENABLE_AHT10
   I2C1_PrintBusProbe();
@@ -894,10 +905,12 @@ int main(void)
       {
         next_hb_ms = now + 5000U;
         printf("[heartbeat] tick=%lu ms\r\n", (unsigned long)now);
+#if APP_DEBUG_UART
         {
           static const uint8_t hb_raw[] = "[HB-RAW] 5s OK\r\n";
-          (void)HAL_UART_Transmit(&huart1, (uint8_t *)hb_raw, sizeof(hb_raw) - 1U, 500U);
+          (void)HAL_UART_Transmit(&huart1, (uint8_t *)hb_raw, sizeof(hb_raw) - 1U, 50U);
         }
+#endif
       }
     }
 
